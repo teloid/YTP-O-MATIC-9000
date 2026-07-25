@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<!-- index.html — YTP-O-MATIC 9000 page shell: all DOM, zero logic (agent: UI) -->
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>💩 YTP-O-MATIC 9000</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='80' font-size='80'>💩</text></svg>">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+  <header>
+    <h1>💩 YTP-O-MATIC 9000</h1>
+    <div id="tagline">
+      <div class="marquee">
+        <span>THE MIRACLE NOBODY ASKED FOR ★ 100% ARTIFICIAL STUPIDITY ★ NO REFUNDS ★ POOP RESPONSIBLY ★ AS SEEN ON THE INTERNET ★ ZERO STARS ON YELP ★&nbsp;</span>
+        <span aria-hidden="true">THE MIRACLE NOBODY ASKED FOR ★ 100% ARTIFICIAL STUPIDITY ★ NO REFUNDS ★ POOP RESPONSIBLY ★ AS SEEN ON THE INTERNET ★ ZERO STARS ON YELP ★&nbsp;</span>
+      </div>
+    </div>
+  </header>
+
+  <main>
+
+    <!-- ============ DROPZONE (visible at start) ============ -->
+    <section id="dropzone">
+      <div class="drop-inner">
+        <div class="drop-emoji" aria-hidden="true">📼</div>
+        <div class="drop-title">DROP A VIDEO / AUDIO / IMAGE HERE</div>
+        <label class="btn file-btn">
+          …or click to browse
+          <input type="file" id="file-input" accept="video/*,audio/*,image/*">
+        </label>
+      </div>
+
+      <div class="mini-forms">
+        <div class="mini-form">
+          <h3>🤖 TEXT-TO-POOP</h3>
+          <textarea id="text-input" rows="3" placeholder="type something dumb…"></textarea>
+          <button id="text-load-btn" class="btn">🤖 POOP MY WORDS</button>
+        </div>
+        <div class="mini-form">
+          <h3>🔗 YOUTUBE (lol)</h3>
+          <input id="yt-input" type="text" placeholder="paste a YouTube link…">
+          <button id="yt-btn" class="btn">🔗 GO</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ APP (hidden until media loads) ============ -->
+    <section id="app" hidden>
+
+      <nav class="tabs" aria-label="machine tabs">
+        <button id="tab-poop" class="tab active" aria-selected="true">💩 POOP MACHINE</button>
+        <button id="tab-sus" class="tab" aria-selected="false">📼 SUS MACHINE</button>
+        <button id="eject-btn" class="btn">⏏ EJECT</button>
+      </nav>
+
+      <div id="stage-wrap"><canvas id="stage" width="1280" height="720"></canvas></div>
+
+      <div id="poop-panel" class="panel">
+        <div class="chaos-row">
+          <label for="chaos" class="chaos-title">CHAOS</label>
+          <input type="range" id="chaos" min="1" max="11" value="7">
+          <span id="chaos-label">7</span>
+        </div>
+
+        <div class="chips">
+          <label class="chip"><input type="checkbox" id="tgl-stutter" checked> ✂️ stutter</label>
+          <label class="chip"><input type="checkbox" id="tgl-reverse" checked> ⏪ reverse</label>
+          <label class="chip"><input type="checkbox" id="tgl-speed" checked> 🐇 speed</label>
+          <label class="chip"><input type="checkbox" id="tgl-pitch" checked> 🎹 pitch</label>
+          <label class="chip"><input type="checkbox" id="tgl-earrape"> 🔊 earrape (⚠ actually loud)</label>
+          <label class="chip"><input type="checkbox" id="tgl-jumpcuts" checked> ✈️ jumpcuts</label>
+          <label class="chip"><input type="checkbox" id="tgl-visuals" checked> 🌈 visuals</label>
+          <label class="chip"><input type="checkbox" id="tgl-captions" checked> 💬 captions</label>
+          <label class="chip chip-select">🗣 captions in
+            <select id="caption-lang">
+              <option value="en" selected>EN</option>
+              <option value="ru">РУ</option>
+              <option value="both">BOTH 🤝</option>
+            </select>
+          </label>
+        </div>
+
+        <div class="btn-row">
+          <button id="poop-btn" class="btn">💩 POOP IT</button>
+          <button id="reroll-btn" class="btn">🎲 RE-POOP</button>
+          <button id="stop-btn" class="btn">🛑 STOP</button>
+          <button id="export-btn" class="btn">📼 RECORD &amp; DOWNLOAD</button>
+        </div>
+
+        <div id="seed-label"></div>
+        <progress id="poop-progress" max="1" value="0"></progress>
+      </div>
+
+      <div id="sus-panel" class="panel" hidden>
+        <p class="sus-instructions">scrub the timeline with your mouse. stop moving = get stuck. press ▶ (or space) to just let it play — grab it mid-play to scratch. it's art.</p>
+        <canvas id="timeline"></canvas>
+        <div class="sus-controls">
+          <button id="sus-play" class="btn">▶ PLAY</button>
+          <label class="chip"><input type="checkbox" id="sus-clean"> 🧼 clean scroll (no pitch warp)</label>
+          <label class="chip"><input type="checkbox" id="sus-latch"> 🔒 latch loop on release</label>
+          <button id="sus-record-btn" class="btn">🔴 RECORD PERFORMANCE</button>
+          <button id="sus-stop-btn" class="btn" disabled>⏹ STOP &amp; DOWNLOAD</button>
+        </div>
+      </div>
+
+    </section>
+
+  </main>
+
+  <div id="toasts" aria-live="polite"></div>
+
+  <!-- Hidden media sources -->
+  <video id="src-video" muted playsinline preload="auto" crossorigin="anonymous"></video>
+  <img id="src-image" alt="">
+
+  <script type="module" src="js/main.js"></script>
+</body>
+</html>
