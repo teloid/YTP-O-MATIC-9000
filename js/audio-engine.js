@@ -302,7 +302,7 @@ export class AudioEngine {
         duration: dur,
         rate: finiteOr(opts.rate, 1),
         reverse,
-        when: 0,
+        when: finiteOr(opts.when, 0), // absolute ctx time; 0 = as soon as possible
         detune: 0,
         gainMul: finiteOr(opts.gainMul, 1),
         _env: 'triangle',
@@ -339,7 +339,9 @@ export class AudioEngine {
       source.playbackRate.value = rate;
 
       const gain = this.ctx.createGain();
-      const now = this.ctx.currentTime;
+      // `when` is an absolute ctx time (0 = now) so callers can align the loop
+      // with the picture during a recording.
+      const now = Math.max(this.ctx.currentTime, finiteOr(opts.when, 0));
       gain.gain.setValueAtTime(0, now);
       gain.gain.linearRampToValueAtTime(1, now + STUCK_FADE_SEC);
 

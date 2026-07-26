@@ -324,17 +324,23 @@ textarea::placeholder, input[type="text"]::placeholder {
 }
 
 /* ============ stage ============ */
-#stage-wrap {
-  display: flex;
-  justify-content: center;
-}
+/* No forced aspect-ratio here: the canvas already carries its own via its
+   width/height attributes (VisualFX.fitToSource sizes it from the source), so a
+   9:16 phone video fills the box instead of being squashed into a sliver. All we
+   do is cap how big the box may get — width like before, plus a height cap so a
+   tall source can't push the POOP/SUS controls off the screen. */
+#stage-wrap { display: block; }
 
 #stage {
   display: block;
-  width: 100%;
-  max-width: 960px;
+  width: auto;
   height: auto;
-  aspect-ratio: 16 / 9;
+  margin: 0 auto;
+  max-width: min(100%, 960px);
+  /* 600px clears a full-width 16/9 stage (543px tall), so landscape keeps its
+     classic size; anything taller than wide gets bounded instead. */
+  max-height: min(72vh, 600px);
+  max-height: min(72svh, 600px); /* phones: the visible viewport, not the tall one */
   background: #000;
   border: 4px solid #fff;
   border-radius: 12px;
@@ -478,6 +484,23 @@ body.maxchaos #chaos-label {
   outline-offset: 3px;
 }
 
+/* caption language select (chip-styled) */
+.chip-select select {
+  background: #12081f;
+  color: #fff;
+  border: 2px solid #000;
+  border-radius: 8px;
+  font: inherit;
+  font-weight: 700;
+  padding: 2px 6px;
+  margin-left: 6px;
+  cursor: pointer;
+}
+.chip-select select:focus-visible {
+  outline: 3px dashed #0ff;
+  outline-offset: 2px;
+}
+
 /* poop controls */
 .btn-row {
   display: flex;
@@ -583,12 +606,147 @@ body.maxchaos #chaos-label {
 /* ============ mobile ============ */
 @media (max-width: 700px) {
   main { padding: 0 10px 40px; }
+
+  /* header: same scream, less screen */
+  h1 {
+    font-size: clamp(1.7rem, 8.6vw, 2.8rem);
+    -webkit-text-stroke-width: 1.5px;
+    filter: drop-shadow(3px 3px 0 #000);
+    transform: rotate(-1deg);
+  }
+  #tagline { padding: 0.28em 0; }
+  .marquee span { font-size: 0.8rem; letter-spacing: 0.1em; }
+
+  /* every tappable thing gets a thumb-sized hit box */
+  button, .btn {
+    min-height: 46px;
+    padding: 0.55em 1em;
+  }
+
+  /* dropzone */
+  .drop-inner {
+    gap: 0.9rem;
+    padding: 2rem 1rem;
+    border-width: 5px;
+    border-radius: 18px;
+  }
+  .drop-emoji { font-size: 3.2rem; }
+  .drop-title { font-size: clamp(1.1rem, 5.6vw, 1.7rem); }
   .mini-forms { grid-template-columns: 1fr; }
-  .tabs { flex-wrap: wrap; }
-  #eject-btn { margin-left: 0; }
-  #poop-btn { font-size: 1.35rem; }
-  .chaos-row { flex-wrap: wrap; }
-  #stage { border-width: 3px; }
+
+  /* tabs: the two machines split row one, EJECT parks at the end of row two */
+  .tabs {
+    flex-wrap: wrap;
+    gap: 0.4rem;
+    padding: 0 2px;
+  }
+  .tab {
+    flex: 1 1 42%;
+    padding: 0.7em 0.5em;
+    font-size: 0.95rem;
+  }
+  #eject-btn { margin-left: auto; }
+
+  /* stage: a touch tighter than desktop so the controls stay in reach */
+  #stage {
+    border-width: 3px;
+    max-height: 56vh;
+    max-height: 56svh;
+  }
+
+  .panel {
+    gap: 0.8rem;
+    padding: 0.9rem;
+    border-radius: 14px;
+  }
+
+  /* chaos: name + value on one line, fat full-width slider underneath */
+  .chaos-row { gap: 0.35rem 0.8rem; flex-wrap: wrap; }
+  #chaos-label { order: 2; margin-left: auto; }
+  #chaos {
+    order: 3;
+    flex: 1 1 100%;
+    height: 30px;
+    border-radius: 16px;
+  }
+  #chaos::-webkit-slider-thumb { width: 32px; height: 32px; }
+  #chaos::-moz-range-thumb { width: 32px; height: 32px; }
+
+  /* chips: taller pills, bigger boxes, wordy ones get their own row */
+  .chips { gap: 0.5rem; }
+  .chip {
+    min-height: 46px;
+    max-width: 100%;
+    padding: 0.5em 0.95em;
+    font-size: 1rem;
+  }
+  .chip input[type="checkbox"] { width: 1.4em; height: 1.4em; }
+  .chip-select {
+    flex: 1 1 100%;
+    justify-content: space-between;
+    padding: 0.3em 0.45em 0.3em 0.95em;
+  }
+  .chip-select select { min-height: 44px; padding: 0.35em 0.6em; }
+
+  /* poop controls: THE button spans the phone, the small fry pair up */
+  .btn-row { gap: 0.55rem; }
+  .btn-row .btn { flex: 1 1 auto; }
+  #poop-btn {
+    flex: 1 1 100%;
+    font-size: 1.35rem;
+    padding: 0.5em 0.7em;
+  }
+  #reroll-btn, #stop-btn { flex: 1 1 40%; }
+  #export-btn { flex: 1 1 100%; }
+
+  /* sus: timeline tall enough to scrub with a thumb, controls stacked */
+  .sus-instructions { font-size: 0.9rem; line-height: 1.35; }
+  #timeline { height: 150px; }
+  .sus-controls { gap: 0.55rem; }
+  .sus-controls .btn, .sus-controls .chip { flex: 1 1 100%; }
+
+  /* toasts sit up top on narrow screens so they never cover the buttons */
+  #toasts {
+    top: 8px;
+    right: 8px;
+    bottom: auto;
+    left: 8px;
+    gap: 8px;
+    max-width: none;
+    align-items: stretch;
+  }
+  .toast {
+    font-size: 0.95rem;
+    padding: 0.6em 0.85em;
+    box-shadow: 4px 4px 0 var(--pink);
+    overflow-wrap: anywhere;
+  }
+}
+
+/* ============ tiny phones (360–400px) ============ */
+@media (max-width: 400px) {
+  h1 { -webkit-text-stroke-width: 1px; }
+  .marquee span { font-size: 0.72rem; letter-spacing: 0.07em; }
+  .tab { font-size: 0.88rem; padding: 0.7em 0.3em; letter-spacing: 0.02em; }
+  .chip:not(.chip-select) { padding: 0.5em 0.8em; font-size: 0.95rem; }
+  #poop-btn { font-size: 1.2rem; }
+  .btn-row .btn, .sus-controls .btn, #eject-btn {
+    font-size: 0.95rem;
+    letter-spacing: 0.02em;
+  }
+}
+
+/* ============ short viewports (phone held sideways) ============ */
+/* vh is tiny here, so let the stage claim more of it and trim the header. */
+@media (max-height: 500px) and (orientation: landscape) {
+  h1 { font-size: 1.6rem; margin: 0.15em auto 0.1em; }
+  .marquee span { font-size: 0.75rem; }
+  #app { margin-top: 0.7rem; }
+  #stage {
+    max-height: 82vh;
+    max-height: 82svh;
+  }
+  #timeline { height: 92px; }
 }
 
 /* ============ reduced motion ============ */
@@ -603,21 +761,4 @@ body.maxchaos #chaos-label {
   body.maxchaos #chaos::-webkit-slider-thumb { animation: none !important; }
   body.maxchaos #chaos::-moz-range-thumb { animation: none !important; }
   .marquee { transform: none; }
-}
-
-/* caption language select (chip-styled) */
-.chip-select select {
-  background: #12081f;
-  color: #fff;
-  border: 2px solid #000;
-  border-radius: 8px;
-  font: inherit;
-  font-weight: 700;
-  padding: 2px 6px;
-  margin-left: 6px;
-  cursor: pointer;
-}
-.chip-select select:focus-visible {
-  outline: 3px dashed #0ff;
-  outline-offset: 2px;
 }

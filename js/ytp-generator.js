@@ -14,6 +14,25 @@ const effectiveRate = (rate, detune) =>
   (rate || 1) * Math.pow(2, (detune || 0) / 1200);
 const lerp = (a, b, t) => a + (b - a) * t;
 
+// VisualFX accepts zoom in 0.05..8, but a watchable poop lives in 1.0..2.0 —
+// generated zooms stay inside the practical band, the hard range is only the
+// final safety clamp on interpolated values.
+const ZOOM_MIN = 0.05;
+const ZOOM_MAX = 8;
+const ZOOM_PRACTICAL = 2;
+
+// Weighted index pick — one rng draw, weights need not be normalized.
+function pickWeighted(rng, weights) {
+  let total = 0;
+  for (const w of weights) total += w;
+  let roll = rng() * total;
+  for (let i = 0; i < weights.length; i++) {
+    roll -= weights[i];
+    if (roll <= 0) return i;
+  }
+  return weights.length - 1;
+}
+
 // ---------------------------------------------------------------------------
 // mulberry32 — standard seeded PRNG, returns () => float in [0, 1)
 // ---------------------------------------------------------------------------
@@ -37,24 +56,62 @@ function pickRate(rng, p) {
   const rates = [0.25, 0.5, 1.5, 2, 3, 4];
   // "wildness" of each rate (distance from normal speed); higher chaos leans wilder.
   const wild = [3, 1, 1, 2, 3, 4];
-  const weights = wild.map((w) => 1 + w * p * 1.5);
-  let total = 0;
-  for (const w of weights) total += w;
-  let roll = rng() * total;
-  for (let i = 0; i < rates.length; i++) {
-    roll -= weights[i];
-    if (roll <= 0) return rates[i];
-  }
-  return rates[rates.length - 1];
+  return rates[pickWeighted(rng, wild.map((w) => 1 + w * p * 1.5))];
 }
 
-function rollFx(rng) {
+// Zoom comes in five flavors: the original static hold, plus four ANIMATED ones
+// the Conductor interpolates per frame (zoomFrom -> zoomTo, see zoomAtProgress).
+// Animated flavors emit no static `zoom` at all. Travel scales with chaos p:
+// calm edits mostly hold or creep, wild ones punch and pulse.
+function rollZoom(rng, p) {
+  const cx = rng();
+  const cy = rng();
+  // Every amount below is written to land inside 1..ZOOM_PRACTICAL on its own;
+  // the clamps are a safety net, not the shape of the distribution.
+  const flavors = [
+    // Static hold: one fixed zoom for the whole event (the classic jump cut).
+    () => ({ zoom: clamp(1.15 + rng() * (0.3 + 0.35 * p), 1, ZOOM_PRACTICAL) }),
+    // Slow creep in: sits still at the cut, then drifts closer.
+    () => ({
+      zoomFrom: 1,
+      zoomTo: clamp(1.15 + rng() * (0.12 + 0.3 * p), 1, ZOOM_PRACTICAL),
+      zoomEase: 'inOut',
+    }),
+    // Snap out: opens tight on the frame and falls back to full.
+    () => ({
+      zoomFrom: clamp(1.4 + rng() * (0.15 + 0.35 * p), 1, ZOOM_PRACTICAL),
+      zoomTo: 1,
+      zoomEase: 'out',
+    }),
+    // Hard punch in: slams close in the first fraction, then holds.
+    () => ({
+      zoomFrom: 1,
+      zoomTo: clamp(1.5 + rng() * (0.12 + 0.33 * p), 1, ZOOM_PRACTICAL),
+      zoomEase: 'out',
+    }),
+    // Pulse: oscillates between two zooms N whole cycles across the event.
+    () => {
+      const lo = 1 + rng() * 0.1;
+      return {
+        zoomFrom: lo,
+        zoomTo: clamp(lo + 0.15 + rng() * (0.1 + 0.45 * p), 1, ZOOM_PRACTICAL),
+        zoomPulses: 1 + Math.floor(rng() * (2 + Math.round(4 * p))),
+      };
+    },
+  ];
+  // Weights mirror the flavor order above: chaos drains the creep and feeds the
+  // punches and pulses, the static hold keeps a steady share for variety.
+  const weights = [2, 3 - 1.5 * p, 1.5 + 1.5 * p, 0.5 + 3 * p, 0.5 + 2.5 * p];
+  return { ...flavors[pickWeighted(rng, weights)](), zoomCx: cx, zoomCy: cy };
+}
+
+function rollFx(rng, p) {
   const fx = {};
   const builders = [
     () => { fx.invert = 1; },
     () => { fx.hue = [90, 180, 270][Math.floor(rng() * 3)]; },
     () => { fx.saturate = 3; },
-    () => { fx.zoom = 1.15 + rng() * 0.55; fx.zoomCx = rng(); fx.zoomCy = rng(); },
+    () => { Object.assign(fx, rollZoom(rng, p)); },
     () => { fx.shake = 4 + rng() * 10; },
     () => { if (rng() < 0.15) fx.mirror = true; },
     () => { if (rng() < 0.2) fx.rainbow = true; },
@@ -124,7 +181,7 @@ export function generateEDL({ duration, chaos, seed, toggles } = {}) {
       srcDur = Math.min(srcDur, dur - cursor);
 
       let fx = {};
-      if (tgl.visuals && rng() < 0.5 * p) fx = rollFx(rng);
+      if (tgl.visuals && rng() < 0.5 * p) fx = rollFx(rng, p);
 
       // Boolean flag only — Conductor swaps `true` for a CAPTIONS string at load().
       const caption = tgl.captions && rng() < 0.15 + 0.15 * p ? true : null;
@@ -148,30 +205,43 @@ export function generateEDL({ duration, chaos, seed, toggles } = {}) {
     }
   }
 
-  // Final event: white flash bang + "GET POOPED".
-  const finalDur = dur > 0 ? Math.min(0.4, dur) : 0.4;
-  const finalStart = dur > 0 ? clamp(rng() * dur, 0, Math.max(0, dur - finalDur)) : 0;
-  events.push({
-    tOut,
-    srcStart: finalStart,
-    srcDur: finalDur,
-    rate: 1,
-    reverse: false,
-    detune: 0,
-    gainMul: 1,
-    earrape: false,
-    repeat: 1,
-    fx: { flash: 1 },
-    caption: 'GET POOPED',
-  });
-
-  return { seed: cleanSeed, totalOut: tOut + finalDur, events };
+  // No tacked-on ending: the edit just stops on its last cut. (A forced white
+  // flash + "GET POOPED" card used to live here and read as a dead frame.)
+  return { seed: cleanSeed, totalOut: tOut, events };
 }
 
 // ---------------------------------------------------------------------------
 // Conductor — plays an EDL live: sample-accurate audio scheduling on the
 // AudioContext clock, best-effort video driving, vfx drawn every rAF.
 // ---------------------------------------------------------------------------
+
+// Easing for animated zooms: 'out' covers most of the distance immediately and
+// settles (punches, snap-outs), anything else glides at both ends (creeps).
+function easeZoom(x, mode) {
+  if (mode === 'out') return 1 - Math.pow(1 - x, 3);
+  return x < 0.5 ? 4 * x * x * x : 1 - Math.pow(2 - 2 * x, 3) / 2;
+}
+
+// Resolve an animated zoom into the concrete number VisualFX wants, given the
+// event's progress (0..1) across its output span. Returns null when the event
+// carries no zoom animation, so those events reach VisualFX untouched.
+function zoomAtProgress(fx, prog) {
+  const from = Number(fx.zoomFrom);
+  const to = Number(fx.zoomTo);
+  if (!Number.isFinite(from) && !Number.isFinite(to)) return null;
+  const a = Number.isFinite(from) ? from : 1;
+  const b = Number.isFinite(to) ? to : 1;
+  const x = Number.isFinite(prog) ? clamp(prog, 0, 1) : 0;
+  const pulses = Math.floor(Number(fx.zoomPulses));
+  // Whole cycles of (1 - cos)/2 land back on zoomFrom at prog 1, so a pulse
+  // never leaves the next cut mid-swing.
+  const w =
+    Number.isFinite(pulses) && pulses > 0
+      ? (1 - Math.cos(x * pulses * Math.PI * 2)) / 2
+      : easeZoom(x, fx.zoomEase);
+  const z = lerp(a, b, w);
+  return Number.isFinite(z) ? clamp(z, ZOOM_MIN, ZOOM_MAX) : 1;
+}
 
 const SCHED_INTERVAL_MS = 50;
 // Generous lookahead: hidden tabs throttle timers to >=1s ticks, and audio
@@ -236,8 +306,6 @@ export class Conductor extends EventTarget {
         out.caption = pool.length
           ? pool[Math.floor(rng() * pool.length)]
           : null;
-      } else if (out.caption === 'GET POOPED' && this.captionLang === 'ru') {
-        out.caption = 'ПОКАКАНО.'; // the final bang, localized
       } else if (typeof out.caption !== 'string') {
         out.caption = null;
       }
@@ -445,8 +513,16 @@ export class Conductor extends EventTarget {
       this._repIdx = k;
     }
 
+    // Animated zooms live in the EDL as zoomFrom/zoomTo (+zoomPulses); VisualFX
+    // only understands a plain number, so bake this frame's value from the
+    // event's progress across its OUTPUT span (one repeat is repDur long).
+    const frameFx = { ...ev.fx, caption: ev.caption ?? null };
+    const span = repDur * reps;
+    const animZoom = zoomAtProgress(frameFx, span > 0 ? (t - ev.tOut) / span : 0);
+    if (animZoom !== null) frameFx.zoom = animZoom;
+
     try {
-      this.vfx.draw(source, { ...ev.fx, caption: ev.caption ?? null }, t);
+      this.vfx.draw(source, frameFx, t);
     } catch (err) {
       console.warn('Conductor: vfx.draw failed', err);
     }

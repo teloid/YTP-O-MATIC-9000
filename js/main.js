@@ -143,6 +143,7 @@ function teardown() {
   try { conductor.stop(); } catch (err) { console.warn(err); }
   state.susActive = false;
   try { sus.deactivate(); } catch (err) { console.warn(err); }
+  try { sus.setRecording(false); } catch (err) { console.warn(err); }
   try { sus.resetForMedia(); } catch (err) { console.warn(err); }
   if (state.susRecording) {
     susRecordGen += 1;
@@ -156,6 +157,7 @@ function teardown() {
   try { engine.setEarrape(false); } catch (err) { console.warn(err); }
   try { engine.setBuffer(null); } catch (err) { console.warn(err); }
   try { vfx.resetLastFrame(); } catch (err) { console.warn(err); }
+  try { vfx.fitToSource(0, 0); } catch (err) { console.warn(err); } // back to 16:9
   try { videoEl.pause(); } catch (err) { console.warn(err); }
   videoEl.removeAttribute('src');
   try { videoEl.load(); } catch (err) { console.warn(err); }
@@ -338,10 +340,29 @@ async function loadText(rawText) {
   onMediaLoaded();
 }
 
+// The stage takes on the media's own shape, so a vertical video fills a
+// vertical frame instead of being cropped to a horizontal sliver. Only ever
+// called on load/teardown — resizing the canvas mid-recording would change
+// the captureStream track size.
+function applyStageSize() {
+  try {
+    if (state.mediaKind === 'video' && videoEl.videoWidth > 0) {
+      vfx.fitToSource(videoEl.videoWidth, videoEl.videoHeight);
+    } else if (state.mediaKind === 'image' && imageEl.naturalWidth > 0) {
+      vfx.fitToSource(imageEl.naturalWidth, imageEl.naturalHeight);
+    } else {
+      vfx.fitToSource(0, 0); // audio / text / no video track => 16:9
+    }
+  } catch (err) {
+    console.warn('stage sizing failed', err);
+  }
+}
+
 function onMediaLoaded() {
   dropzoneEl.hidden = true;
   appEl.hidden = false;
   showPoopTab();
+  applyStageSize();
   toast('✅ LOADED. NOW POOP IT.');
   // Auto-generate a first edit, but never auto-play (autoplay policies).
   if (engine.duration > 0) {
@@ -458,6 +479,7 @@ async function startSusRecording() {
       return;
     }
     susStopBtn.disabled = false;
+    try { sus.setRecording(true); } catch (err) { console.warn(err); }
     toast('🔴 recording the performance. go nuts.');
   } catch (err) {
     console.warn('sus recording failed to start', err);
@@ -484,11 +506,13 @@ async function stopSusRecording() {
     console.warn('sus recording failed to stop', err);
     toast('💥 could not save the recording.');
   } finally {
-    if (gen !== susRecordGen) return;
-    state.susRecording = false;
-    susRecordBtn.disabled = false;
-    susStopBtn.disabled = true;
-    tabPoopBtn.disabled = false;
+    if (gen === susRecordGen) {
+      state.susRecording = false;
+      susRecordBtn.disabled = false;
+      susStopBtn.disabled = true;
+      tabPoopBtn.disabled = false;
+      try { sus.setRecording(false); } catch (err) { console.warn(err); }
+    }
   }
 }
 

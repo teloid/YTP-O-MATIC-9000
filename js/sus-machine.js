@@ -11,6 +11,11 @@ const MOVE_EPS_PX = 2;      // "real movement" threshold (px)
 const SEEK_MIN_MS = 33;     // match the 30 fps recording capture cadence
 const TRANSPORT_SEEK_TIMEOUT_MS = 1500;
 const TRANSPORT_DRIFT_SEC = 0.08;
+const TRANSPORT_SEEK_COOLDOWN_MS = 500;
+// While recording, audio is nudged later to land with the picture it belongs
+// to. Capped so a long-GOP file can't make the instrument unplayable.
+const REC_SYNC_MAX_SEC = 0.12;
+const FRAME_SEC = 1 / 60;
 const VEL_EMA_ALPHA = 0.3;  // EMA smoothing for pointer velocity
 const PITCH_STEP_CENTS = 100;
 const PITCH_MAX_CENTS = 1200;
@@ -55,6 +60,9 @@ export class SusMachine {
     this._transportGen = 0;        // cancels async video seek/play starts
     this._resumeAfterScrub = false; // was playing when the scrub grabbed the timeline
     this._pendingVideoSeek = false; // latest _pos should be applied after seeked
+    this._seekIssuedT = 0;          // performance.now() when the in-flight seek was issued
+    this._seekLatencySec = 0;       // EMA of observed seek latency (s)
+    this._recording = false;        // align audio to the picture while capturing
 
     // Canvas metrics
     this._cssW = 0;
@@ -71,11 +79,20 @@ export class SusMachine {
     this._onVideoSeeked = () => {
       if (!this._active) return;
       const now = performance.now();
+      if (this._seekIssuedT) {
+        // Measure what a seek actually costs on this file, so the transport
+        // drift threshold can stay above it (see _seekVideo).
+        const lat = Math.min(1, Math.max(0, (now - this._seekIssuedT) / 1000));
+        this._seekLatencySec = this._seekLatencySec * 0.6 + lat * 0.4;
+        this._seekIssuedT = 0;
+      }
       // Snapshot and paint the frame that just completed BEFORE launching the
       // retained next seek. Otherwise continuous dragging can keep VisualFX in
       // `seeking` forever and freeze the recording on one old cached frame.
       this._drawStage(now / 1000);
-      if (this._pendingVideoSeek) this._seekVideo(now, true);
+      // Only the scrub path re-fires immediately; letting a transport drift
+      // correction re-fire from its own completion is a seek treadmill.
+      if (this._pendingVideoSeek && !this._transport) this._seekVideo(now, true);
     };
     this._tick = () => this._frame();
   }
@@ -89,6 +106,8 @@ export class SusMachine {
     this._pos = 0;
     this._lastSeekT = 0;
     this._pendingVideoSeek = false;
+    this._seekIssuedT = 0;
+    this._seekLatencySec = 0; // re-measure seek cost for the new file
     this._waveCache = null;
   }
 
@@ -217,7 +236,9 @@ export class SusMachine {
         }
         const playing = await this._playVideo(v);
         if (!playing || gen !== this._transportGen || !this._active) {
-          try { v.pause(); } catch (_) { /* already paused */ }
+          // A newer attempt may already own this element — pausing here would
+          // abort ITS play() promise and kill the winner too (wheel spam).
+          if (gen === this._transportGen) { try { v.pause(); } catch (_) { /* already paused */ } }
           this._finishTransportStart(gen);
           return false;
         }
@@ -227,7 +248,7 @@ export class SusMachine {
         this._pos = start;
       } catch (err) {
         console.warn('SusMachine: transport video sync', err);
-        try { v.pause(); } catch (_) { /* already paused */ }
+        if (gen === this._transportGen) { try { v.pause(); } catch (_) { /* already paused */ } }
         this._finishTransportStart(gen);
         return false;
       }
@@ -244,7 +265,7 @@ export class SusMachine {
       node = this._engine.playSegment({ start, duration: dur - start, rate, when: startCtxT });
     } catch (err) { console.warn('SusMachine: transport start', err); }
     if (!node || gen !== this._transportGen) {
-      if (isVideo) {
+      if (isVideo && gen === this._transportGen) {
         try { this._videoEl.pause(); } catch (_) { /* already paused */ }
       }
       if (node) {
@@ -356,6 +377,28 @@ export class SusMachine {
   }
 
   _pitchMul() { return 2 ** (this._pitchCents / 1200); }
+
+  // main.js flips this around a RECORD PERFORMANCE capture.
+  setRecording(on) {
+    this._recording = !!on;
+  }
+
+  // A grain for position P is audible instantly, but the frame showing P only
+  // appears once the video seek lands — so in a recording the audio runs ahead
+  // by that latency. Delay the audio by it while capturing. Live monitoring
+  // stays at zero latency (the performer needs immediate feedback).
+  _syncDelaySec() {
+    if (!this._recording) return 0;
+    if (this._kindGetter() !== 'video' || !this._videoEl) return FRAME_SEC;
+    return clamp(this._seekLatencySec || FRAME_SEC, FRAME_SEC, REC_SYNC_MAX_SEC);
+  }
+
+  _syncWhen() {
+    const delay = this._syncDelaySec();
+    if (delay <= 0) return 0; // 0 = "as soon as possible"
+    try { return this._engine.ctx.currentTime + delay; }
+    catch (err) { return 0; }
+  }
 
   // "Clean scroll": grains and stuck loops play at the source's original
   // pitch/speed (rate 1, no wobble) — scrubbing sounds like honest audio.
@@ -531,6 +574,7 @@ export class SusMachine {
         rate,
         reverse: this._dir < 0,
         gainMul: 0.9,
+        when: this._syncWhen(),
       });
     } catch (err) { console.warn('SusMachine: playGrain', err); }
   }
@@ -540,7 +584,7 @@ export class SusMachine {
     const windowSec = 0.06 + Math.random() * 0.14;
     const rate = this._cleanMode() ? 1 : this._lastRate;
     try {
-      this._engine.startStuckLoop({ pos: this._pos, windowSec, rate });
+      this._engine.startStuckLoop({ pos: this._pos, windowSec, rate, when: this._syncWhen() });
       this._engine.updateStuckLoop({ rate, detune: this._pitchCents });
     } catch (err) { console.warn('SusMachine: startStuckLoop', err); return; }
     this._stuck = { pos: this._pos, windowSec, rate };
@@ -558,7 +602,7 @@ export class SusMachine {
         // The glitch "re-grab": restart the loop with a new random window.
         // (Kept in clean mode — it's the skipping-CD effect, pitch untouched.)
         const windowSec = 0.06 + Math.random() * 0.14;
-        this._engine.startStuckLoop({ pos: this._stuck.pos, windowSec, rate: this._stuck.rate });
+        this._engine.startStuckLoop({ pos: this._stuck.pos, windowSec, rate: this._stuck.rate, when: this._syncWhen() });
         this._stuck.windowSec = windowSec;
         this._wobble = 0;
         this._engine.updateStuckLoop({ rate: this._stuck.rate, detune: this._pitchCents });
@@ -597,14 +641,24 @@ export class SusMachine {
       }
       // While the transport plays, the video element rolls on its own — only
       // correct real drift or the constant micro-seeks would stutter it.
-      const eps = this._transport ? TRANSPORT_DRIFT_SEC : 0.015;
+      const lat = this._transport ? this._seekLatencySec : 0;
+      // A correction costs `lat` seconds of media time, so a threshold below
+      // that cost is self-sustaining: each seek re-creates the error that
+      // triggers the next one. Keep the bar above the measured seek cost.
+      const eps = this._transport ? Math.max(TRANSPORT_DRIFT_SEC, lat * 2) : 0.015;
       if (Math.abs((v.currentTime || 0) - target) < eps) {
         this._pendingVideoSeek = false;
         return;
       }
+      if (this._transport && now - this._lastSeekT < TRANSPORT_SEEK_COOLDOWN_MS) {
+        this._pendingVideoSeek = false;
+        return;
+      }
       this._lastSeekT = now;
+      this._seekIssuedT = now;
       this._pendingVideoSeek = false;
-      v.currentTime = target;
+      // Aim where the playhead WILL be once the seek lands, not where it is now.
+      v.currentTime = clamp(target + lat * (this._transport ? this._transport.rate : 0), 0, max);
     } catch (err) { console.warn('SusMachine: video seek', err); }
   }
 
