@@ -1,0 +1,21 @@
+# Cloudflare Pages response headers.
+#
+# This app has no build step, so js/ and css/ filenames never change between
+# deploys. Without this, a visitor can end up holding a cached copy of one
+# module next to a freshly fetched copy of another — a mix that breaks the app
+# in ways that look like ghost bugs rather than a caching problem.
+#
+# `no-cache` still stores the file; it only forces a revalidation before reuse,
+# so repeat visits stay fast (304s) but never stale.
+
+/
+  Cache-Control: no-cache
+
+/index.html
+  Cache-Control: no-cache
+
+/js/*
+  Cache-Control: no-cache
+
+/css/*
+  Cache-Control: no-cache

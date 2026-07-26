@@ -81,6 +81,13 @@ Load anything with audio and switch tabs. You get a rainbow waveform timeline:
 - **🔒 latch** — release the mouse and let the loop run forever. It's art.
 - **🔴 RECORD PERFORMANCE** — capture your scrubbing session as a video file.
 
+## Deploying
+
+It's a static site with no build step, so any static host works. Live on
+Cloudflare Pages at <https://ytp9000.pages.dev> (build command: none, output
+directory: the repo root). `_headers` keeps `js/` and `css/` revalidating so a
+deploy can't leave visitors holding a half-updated set of modules.
+
 ## Console toys
 
 `window.YTP` exposes `{ engine, vfx, conductor, sus, exporter, state }` if you
