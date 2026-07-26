@@ -17,10 +17,6 @@ const imageEl = $('src-image');
 const toastsEl = $('toasts');
 
 const fileInput = $('file-input');
-const textInput = $('text-input');
-const textLoadBtn = $('text-load-btn');
-const ytInput = $('yt-input');
-const ytBtn = $('yt-btn');
 
 const tabPoopBtn = $('tab-poop');
 const tabSusBtn = $('tab-sus');
@@ -50,7 +46,7 @@ const conductor = new Conductor({ engine, vfx, videoEl, imageEl, canvas: stageCa
 const exporter = new Exporter({ canvas: stageCanvas, engine });
 
 const state = {
-  mediaKind: null, // 'video' | 'audio' | 'image' | 'text' | null
+  mediaKind: null, // 'video' | 'audio' | 'image' | null
   engine,
   vfx,
   conductor,
@@ -307,37 +303,6 @@ function failedLoadReset() {
   showPoopTab();
   appEl.hidden = true;
   dropzoneEl.hidden = false;
-}
-
-async function loadText(rawText) {
-  if (state.exporting || state.susRecording) {
-    toast(state.susRecording
-      ? '🔴 a sus performance is still recording — stop it first.'
-      : '⏳ hold on — a recording is cooking');
-    return;
-  }
-  const text = (rawText || '').trim();
-  if (!text) {
-    toast('type something dumb first.');
-    return;
-  }
-  teardown();
-  state.mediaKind = null;
-  appEl.hidden = true;
-  dropzoneEl.hidden = false;
-  const gen = ++loadGen;
-  try {
-    const robo = await engine.renderRoboVoice(text);
-    if (gen !== loadGen) return; // superseded
-    engine.setBuffer(robo);
-  } catch (err) {
-    console.warn('robo-voice failed', err);
-    if (gen === loadGen) failedLoadReset();
-    toast('🤖 the robo-voice died. try different words.');
-    return;
-  }
-  state.mediaKind = 'text';
-  onMediaLoaded();
 }
 
 // The stage takes on the media's own shape, so a vertical video fills a
@@ -613,17 +578,6 @@ fileInput.addEventListener('change', () => {
   const file = fileInput.files?.[0];
   fileInput.value = ''; // allow re-picking the same file
   loadFile(file);
-});
-
-textLoadBtn.addEventListener('click', () => loadText(textInput.value));
-textInput.addEventListener('keydown', (e) => {
-  if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) loadText(textInput.value);
-});
-
-const ytTroll = () => toast("❌ browsers can't rip YouTube (CORS + lawyers said no). Download the file yourself and drop it here 💅", 6000);
-ytBtn.addEventListener('click', ytTroll);
-ytInput.addEventListener('keydown', (e) => {
-  if (e.key === 'Enter') ytTroll();
 });
 
 // ---------- drag & drop (document level; works even when #app is visible) ----------

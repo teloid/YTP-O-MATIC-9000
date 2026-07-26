@@ -34,13 +34,17 @@ The app is entirely static; there are no dependencies or environment variables.
 
 ## 💩 POOP MACHINE
 
-Feed it any of:
+Drop in (or browse for) any of:
 
 - **a video file** — the classic. Audio is demuxed and pooped along with the picture.
 - **an audio file** — visuals become a rainbow spectrum visualizer with a pulsing 🗿.
 - **an image** — a robo-voice solemnly announces your image while it gets destroyed.
-- **typed text** — synthesized into an Undertale-style blip voice, then pooped.
-- **a YouTube link** — no. (The box exists. It has opinions.)
+
+The stage takes on your media's shape, so vertical video stays vertical (and
+exports vertical) instead of being cropped to a horizontal sliver.
+
+Want a YouTube video? Download it yourself and drop the file in — browsers
+can't fetch it (CORS), and ripping it isn't ours to automate.
 
 Crank the CHAOS dial (1–11), pick your poisons — stutter, reverse, speed
 chaos, pitch demons, earrape (off by default, it's *actually loud*), jump
@@ -100,4 +104,4 @@ Audio is the clock: segments are scheduled sample-accurately on the
 AudioContext timeline from reversed/forward buffer copies; the video element
 just does its best to keep up, which is honestly very in-genre.
 
-Built by a fleet of Claude agents. The lawyers said no to the YouTube box.
+Built by a fleet of Claude agents.

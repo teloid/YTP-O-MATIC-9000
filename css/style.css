@@ -248,46 +248,6 @@ body.dragging #app {
   outline-offset: 3px;
 }
 
-.mini-forms {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 1rem;
-}
-
-.mini-form {
-  display: flex;
-  flex-direction: column;
-  gap: 0.65rem;
-  padding: 1rem;
-  background: var(--panel);
-  border: 3px solid #000;
-  border-radius: 14px;
-  box-shadow: var(--shadow-hard);
-}
-
-.mini-form h3 {
-  margin: 0;
-  font-family: var(--font-loud);
-  letter-spacing: 0.08em;
-  color: var(--yellow);
-  text-shadow: 2px 2px 0 #000;
-}
-
-textarea, input[type="text"] {
-  font: inherit;
-  color: #fff;
-  background: var(--ink);
-  border: 3px solid #000;
-  border-radius: 10px;
-  padding: 0.6em 0.75em;
-  box-shadow: inset 3px 3px 0 rgba(0, 0, 0, 0.55);
-  resize: vertical;
-}
-
-textarea::placeholder, input[type="text"]::placeholder {
-  color: rgba(255, 255, 255, 0.45);
-}
-
 /* ============ app shell / tabs ============ */
 #app {
   max-width: 1000px;
@@ -632,7 +592,6 @@ body.maxchaos #chaos-label {
   }
   .drop-emoji { font-size: 3.2rem; }
   .drop-title { font-size: clamp(1.1rem, 5.6vw, 1.7rem); }
-  .mini-forms { grid-template-columns: 1fr; }
 
   /* tabs: the two machines split row one, EJECT parks at the end of row two */
   .tabs {
