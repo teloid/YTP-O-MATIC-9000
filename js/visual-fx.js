@@ -195,14 +195,17 @@ export class VisualFX {
   // Pick stage dims that match a source's aspect (so cover-fit crops nothing),
   // long side 1280, aspect bounded so panoramas/slivers stay sane. Bad or
   // missing intrinsic sizes (audio, text, still-loading media) ⇒ 16:9.
-  fitToSource(srcW, srcH) {
+  // `maxLong` shrinks the long edge below the default 1280 — lite mode trades
+  // resolution for fill rate on phones that can't keep up.
+  fitToSource(srcW, srcH, maxLong) {
     const sw = toNum(srcW, 0);
     const sh = toNum(srcH, 0);
+    const long = clampNum(maxLong, LONG_SIDE, MIN_DIM, MAX_DIM);
     let aspect = sw > 0 && sh > 0 ? sw / sh : BASE_W / BASE_H;
     if (!Number.isFinite(aspect) || aspect <= 0) aspect = BASE_W / BASE_H;
     aspect = clampNum(aspect, BASE_W / BASE_H, MIN_ASPECT, MAX_ASPECT);
-    const w = aspect >= 1 ? LONG_SIDE : LONG_SIDE * aspect;
-    const h = aspect >= 1 ? LONG_SIDE / aspect : LONG_SIDE;
+    const w = aspect >= 1 ? long : long * aspect;
+    const h = aspect >= 1 ? long / aspect : long;
     return this.setSize(w, h);
   }
 

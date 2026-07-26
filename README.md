@@ -31,6 +31,12 @@ Connect this GitHub repository in Cloudflare Pages and use:
 - Build output directory: `.`
 
 The app is entirely static; there are no dependencies or environment variables.
+Live at <https://ytp9000.pages.dev>.
+
+Because there is no build step, `js/` and `css/` filenames never change between
+deploys, so `_headers` marks them `no-cache` (revalidate, don't re-download).
+Without it a visitor can end up holding one stale module beside a fresh one,
+which fails in ways that look like ghost bugs rather than caching.
 
 ## 💩 POOP MACHINE
 
@@ -45,6 +51,12 @@ exports vertical) instead of being cropped to a horizontal sliver.
 
 Want a YouTube video? Download it yourself and drop the file in — browsers
 can't fetch it (CORS), and ripping it isn't ours to automate.
+
+**LENGTH** picks how long the result runs — 5s / 10s / 20s (default) / 45s, or
+**FULL ⚠** to poop the entire source at your own risk (a long video makes a long,
+heavy edit; you get a warning past a minute). **⚡ lite** halves the stage
+resolution, which is what actually rescues playback on a tired phone — it turns
+itself on for small screens and low-core devices.
 
 Crank the CHAOS dial (1–11), pick your poisons — stutter, reverse, speed
 chaos, pitch demons, earrape (off by default, it's *actually loud*), jump
@@ -81,12 +93,12 @@ Load anything with audio and switch tabs. You get a rainbow waveform timeline:
 - **🔒 latch** — release the mouse and let the loop run forever. It's art.
 - **🔴 RECORD PERFORMANCE** — capture your scrubbing session as a video file.
 
-## Deploying
+## Языки / Languages
 
-It's a static site with no build step, so any static host works. Live on
-Cloudflare Pages at <https://ytp9000.pages.dev> (build command: none, output
-directory: the repo root). `_headers` keeps `js/` and `css/` revalidating so a
-deploy can't leave visitors holding a half-updated set of modules.
+The whole interface speaks English and Russian — hit the **РУ / EN** button in
+the header. It remembers your choice and starts in Russian if that's your
+browser's language. (Captions inside the video are a separate setting, so you
+can have an English UI pooping Russian captions.)
 
 ## Console toys
 
@@ -105,6 +117,7 @@ js/visual-fx.js      canvas fx: filters, zoom punch, shake, mirror, rgb split,
 js/sus-machine.js    the scrub instrument: waveform timeline, pointer velocity
                      → grain playback, stuck-loop detection, latch
 js/main.js           app state, loading matrix, tabs, toasts, export flows
+js/i18n.js           EN/RU string tables + the data-i18n DOM localizer
 ```
 
 Audio is the clock: segments are scheduled sample-accurately on the

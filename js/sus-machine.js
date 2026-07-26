@@ -1,5 +1,7 @@
 // sus-machine.js — SusMachine: DPR-aware timeline scrub instrument (grain spray, stuck-loop glitches, wheel pitch) for YTP-O-MATIC 9000.
 
+import { t } from './i18n.js';
+
 const clamp = (v, lo, hi) => Math.min(hi, Math.max(lo, v));
 const clamp01 = (v) => clamp(v, 0, 1);
 
@@ -297,9 +299,14 @@ export class SusMachine {
 
   _syncPlayBtn() {
     const btn = document.getElementById('sus-play');
-    if (btn) btn.textContent = this._transportStarting
-      ? '⏳ SYNCING…'
-      : this._transport ? '⏸ PAUSE' : '▶ PLAY';
+    if (btn) btn.textContent = t(this._transportStarting
+      ? 'sus.syncing'
+      : this._transport ? 'sus.pause' : 'sus.play');
+  }
+
+  // Re-render the labels this class owns after a UI language switch.
+  syncLabels() {
+    this._syncPlayBtn();
   }
 
   activate() {

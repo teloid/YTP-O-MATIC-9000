@@ -113,6 +113,9 @@ h1:hover {
 }
 
 .marquee span {
+  /* the loop gap used to be a trailing &nbsp; in the markup; data-i18n
+     replaces textContent, so the spacing has to live here instead */
+  padding-right: 0.6em;
   color: #fff;
   font-family: var(--font-loud);
   font-size: 1rem;
@@ -720,4 +723,34 @@ body.maxchaos #chaos-label {
   body.maxchaos #chaos::-webkit-slider-thumb { animation: none !important; }
   body.maxchaos #chaos::-moz-range-thumb { animation: none !important; }
   .marquee { transform: none; }
+}
+
+/* ============ language toggle ============ */
+/* the absolute lang button must not sit on top of the title */
+header {
+  position: relative;
+  padding-right: 4rem;
+}
+
+.lang-btn {
+  position: absolute;
+  top: 0.6rem;
+  right: 0.8rem;
+  z-index: 3;
+  padding: 0.35em 0.7em;
+  font-size: 0.95rem;
+  background: var(--cyan, #0ff);
+  color: #000;
+}
+
+@media (max-width: 700px) {
+  header { padding-right: 3.2rem; }
+
+  .lang-btn {
+    top: 0.35rem;
+    right: 0.5rem;
+    min-height: 38px;
+    padding: 0.3em 0.6em;
+    font-size: 0.85rem;
+  }
 }

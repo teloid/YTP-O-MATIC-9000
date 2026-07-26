@@ -21,6 +21,15 @@ const ZOOM_MIN = 0.05;
 const ZOOM_MAX = 8;
 const ZOOM_PRACTICAL = 2;
 
+// Output length budget. DEFAULT_MAX_OUT is the historical ceiling and stays the
+// default so callers that never ask for a length behave exactly as before;
+// MIN_TARGET_OUT keeps a short source from yielding a pointlessly tiny edit.
+const DEFAULT_MAX_OUT = 45;
+const MIN_TARGET_OUT = 4;
+// Shortest source window a trimmed final event may keep; comfortably above the
+// audio engine's 10ms degenerate-segment threshold.
+const MIN_TRIM_SRC = 0.02;
+
 // Weighted index pick — one rng draw, weights need not be normalized.
 function pickWeighted(rng, weights) {
   let total = 0;
@@ -127,7 +136,13 @@ function rollFx(rng, p) {
   return fx;
 }
 
-export function generateEDL({ duration, chaos, seed, toggles } = {}) {
+export function generateEDL({
+  duration,
+  chaos,
+  seed,
+  toggles,
+  maxOut = DEFAULT_MAX_OUT,
+} = {}) {
   const cleanSeed = (seed ?? 0) >>> 0;
   const rng = mulberry32(cleanSeed);
   const tgl = toggles || {};
@@ -135,13 +150,29 @@ export function generateEDL({ duration, chaos, seed, toggles } = {}) {
   const p = c / 11;
   const dur = Number.isFinite(duration) && duration > 0 ? duration : 0;
 
+  // maxOut is the requested OUTPUT length in seconds. Anything non-finite
+  // (Infinity, null, garbage) means "as long as the source" — the caller's
+  // explicit at-your-own-risk choice, since a long source then makes a long,
+  // heavy edit. A non-positive cap is nonsense, so warn and use the default.
+  let outCap = Number(maxOut ?? Infinity);
+  if (!Number.isFinite(outCap)) {
+    outCap = Infinity;
+  } else if (outCap <= 0) {
+    console.warn('generateEDL: maxOut must be positive, using default', maxOut);
+    outCap = DEFAULT_MAX_OUT;
+  }
+
   const events = [];
   let tOut = 0;
 
   if (dur <= 0) {
     console.warn('generateEDL: bad/zero source duration, producing minimal edit');
   } else {
-    const targetOut = clamp(dur, 4, 45);
+    // Play the whole source, bounded by the requested cap. The floor steps
+    // aside when the caller asked for a poop shorter than the floor itself, so
+    // the cap always wins; dur is finite here, so targetOut is too even when
+    // outCap is Infinity.
+    const targetOut = clamp(dur, Math.min(MIN_TARGET_OUT, outCap), outCap);
     const minDur = lerp(0.9, 0.15, p);
     const maxDur = lerp(2.2, 0.6, p);
     let cursor = rng() * dur;
@@ -186,6 +217,15 @@ export function generateEDL({ duration, chaos, seed, toggles } = {}) {
       // Boolean flag only — Conductor swaps `true` for a CAPTIONS string at load().
       const caption = tgl.captions && rng() < 0.15 + 0.15 * p ? true : null;
 
+      // How much OUTPUT this event fills. An unbounded cap leans on tOut alone
+      // to end the loop, so a non-finite slot would both poison totalOut and
+      // leave only the guard to stop us — drop the event and keep going.
+      const slotOut = (srcDur / effectiveRate(rate, detune)) * repeat;
+      if (!Number.isFinite(slotOut) || slotOut <= 0) {
+        console.warn('generateEDL: skipping event with unusable length', slotOut);
+        continue;
+      }
+
       events.push({
         tOut,
         srcStart: cursor,
@@ -200,8 +240,30 @@ export function generateEDL({ duration, chaos, seed, toggles } = {}) {
         caption,
       });
 
-      tOut += (srcDur / effectiveRate(rate, detune)) * repeat;
+      tOut += slotOut;
       cursor += srcDur;
+    }
+
+    // The loop accumulates until it passes the target, so it can overshoot by a
+    // whole event — and one event is not small when a 0.25x rate stretches a
+    // 1s segment into 4s of output, which turns a "5s" request into nine.
+    // Trim the last event back into the budget (or drop it if there's no room).
+    if (events.length > 1 && tOut > targetOut) {
+      const last = events[events.length - 1];
+      const reps = Math.max(1, last.repeat | 0);
+      const eff = effectiveRate(last.rate, last.detune);
+      const remaining = targetOut - last.tOut;
+      const shrunk = (remaining * eff) / reps;
+      // MIN_TRIM_SRC stays above the engine's 10ms degenerate-segment floor.
+      if (remaining > 0.05 && shrunk >= MIN_TRIM_SRC && shrunk < last.srcDur) {
+        last.srcDur = shrunk;
+        tOut = last.tOut + remaining;
+      } else {
+        // Can't make it fit (a heavily slowed segment can't be shortened
+        // enough to matter) — drop it rather than blow past the budget.
+        events.pop();
+        tOut = last.tOut;
+      }
     }
   }
 

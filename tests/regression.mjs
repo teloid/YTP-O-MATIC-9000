@@ -4,14 +4,22 @@ import fs from 'node:fs/promises';
 const asDataModule = (source) =>
   `data:text/javascript;base64,${Buffer.from(source).toString('base64')}`;
 
-async function loadModule(path) {
-  return import(asDataModule(await fs.readFile(new URL(path, import.meta.url), 'utf8')));
-}
-
 const visualSource = await fs.readFile(new URL('../js/visual-fx.js', import.meta.url), 'utf8');
 const visualUrl = asDataModule(visualSource);
-const generatorSource = (await fs.readFile(new URL('../js/ytp-generator.js', import.meta.url), 'utf8'))
-  .replace("'./visual-fx.js'", `'${visualUrl}'`);
+const i18nUrl = asDataModule(await fs.readFile(new URL('../js/i18n.js', import.meta.url), 'utf8'));
+
+// Modules are inlined as data: URLs, where a relative specifier like
+// './i18n.js' cannot resolve — rewrite each sibling import to its own inlined
+// module so any file is loadable in isolation.
+const inlineImports = (source) => source
+  .replace("'./visual-fx.js'", `'${visualUrl}'`)
+  .replace("'./i18n.js'", `'${i18nUrl}'`);
+
+async function loadModule(path) {
+  return import(asDataModule(inlineImports(await fs.readFile(new URL(path, import.meta.url), 'utf8'))));
+}
+
+const generatorSource = inlineImports(await fs.readFile(new URL('../js/ytp-generator.js', import.meta.url), 'utf8'));
 
 const [{ AudioEngine }, { SusMachine }, visualModule, generatorModule] = await Promise.all([
   loadModule('../js/audio-engine.js'),

@@ -4,6 +4,7 @@ import { AudioEngine } from './audio-engine.js';
 import { VisualFX } from './visual-fx.js';
 import { generateEDL, Conductor, Exporter } from './ytp-generator.js';
 import { SusMachine } from './sus-machine.js';
+import { t, initLang, setLang, getLang, applyTo, onLangChange } from './i18n.js';
 
 const $ = (id) => document.getElementById(id);
 
@@ -35,6 +36,9 @@ const progressEl = $('poop-progress');
 
 const susRecordBtn = $('sus-record-btn');
 const susStopBtn = $('sus-stop-btn');
+const lengthEl = $('length');
+const liteEl = $('tgl-lite');
+const langBtn = $('lang-btn');
 
 const TOGGLE_KEYS = ['stutter', 'reverse', 'speed', 'pitch', 'earrape', 'jumpcuts', 'visuals', 'captions'];
 
@@ -153,7 +157,7 @@ function teardown() {
   try { engine.setEarrape(false); } catch (err) { console.warn(err); }
   try { engine.setBuffer(null); } catch (err) { console.warn(err); }
   try { vfx.resetLastFrame(); } catch (err) { console.warn(err); }
-  try { vfx.fitToSource(0, 0); } catch (err) { console.warn(err); } // back to 16:9
+  try { vfx.fitToSource(0, 0, liteEl?.checked ? 720 : 1280); } catch (err) { console.warn(err); } // back to 16:9
   try { videoEl.pause(); } catch (err) { console.warn(err); }
   videoEl.removeAttribute('src');
   try { videoEl.load(); } catch (err) { console.warn(err); }
@@ -210,7 +214,7 @@ async function loadVideo(file, current) {
   if (decoded) {
     engine.setBuffer(decoded);
   } else {
-    toast('no audio track I can chew — video will be SILENT chaos');
+    toast(t('toast.noAudioTrack'));
     const robo = await engine.renderRoboVoice('no audio no audio no audio aaaaaa');
     if (!current()) return false;
     engine.setBuffer(robo);
@@ -222,7 +226,7 @@ async function loadAudio(file, current) {
   const decoded = await engine.decodeFile(file);
   if (!current()) return false;
   if (!decoded) {
-    toast('💀 could not decode that audio. it defeated me.');
+    toast(t('toast.audioDecodeFail'));
     return false;
   }
   engine.setBuffer(decoded);
@@ -245,9 +249,7 @@ async function loadImage(file, current) {
 async function loadFile(file) {
   if (!file) return;
   if (state.exporting || state.susRecording) {
-    toast(state.susRecording
-      ? '🔴 a sus performance is still recording — stop it first.'
-      : '⏳ hold on — a recording is cooking');
+    toast(t(state.susRecording ? 'toast.susRecordingBusy' : 'toast.recordingBusy'));
     return;
   }
   const mime = file.type || '';
@@ -256,7 +258,7 @@ async function loadFile(file) {
       : mime.startsWith('image/') ? 'image'
         : null;
   if (!kind) {
-    toast('🤨 not a video, audio, or image. what IS that.');
+    toast(t('toast.notMedia'));
     return;
   }
 
@@ -281,7 +283,7 @@ async function loadFile(file) {
 
   if (!ok) {
     failedLoadReset();
-    toast('💥 could not load that file. it fought back and won.');
+    toast(t('toast.loadFail'));
     return;
   }
 
@@ -310,13 +312,16 @@ function failedLoadReset() {
 // called on load/teardown — resizing the canvas mid-recording would change
 // the captureStream track size.
 function applyStageSize() {
+  // Lite mode halves the stage's long edge: a 720-wide canvas is ~3x cheaper to
+  // fill than 1280, which is what actually rescues playback on a tired phone.
+  const maxLong = liteEl?.checked ? 720 : 1280;
   try {
     if (state.mediaKind === 'video' && videoEl.videoWidth > 0) {
-      vfx.fitToSource(videoEl.videoWidth, videoEl.videoHeight);
+      vfx.fitToSource(videoEl.videoWidth, videoEl.videoHeight, maxLong);
     } else if (state.mediaKind === 'image' && imageEl.naturalWidth > 0) {
-      vfx.fitToSource(imageEl.naturalWidth, imageEl.naturalHeight);
+      vfx.fitToSource(imageEl.naturalWidth, imageEl.naturalHeight, maxLong);
     } else {
-      vfx.fitToSource(0, 0); // audio / text / no video track => 16:9
+      vfx.fitToSource(0, 0, maxLong); // audio / no video track => 16:9
     }
   } catch (err) {
     console.warn('stage sizing failed', err);
@@ -328,26 +333,36 @@ function onMediaLoaded() {
   appEl.hidden = false;
   showPoopTab();
   applyStageSize();
-  toast('✅ LOADED. NOW POOP IT.');
+  toast(t('toast.loaded'));
   // Auto-generate a first edit, but never auto-play (autoplay policies).
   if (engine.duration > 0) {
     try { makeEdit(); } catch (err) { console.warn('auto-generate failed', err); }
   }
-  toast('press 💩', 4500);
+  toast(t('toast.pressPoop'), 4500);
 }
 
 // ---------- poop / re-poop / stop / export ----------
 
 const captionLang = () => $('caption-lang')?.value || 'en';
 
+// '5' | '10' | '20' | '45' | 'full' — how long the generated poop runs.
+function readMaxOut() {
+  const raw = lengthEl?.value ?? '20';
+  if (raw === 'full') return Infinity;
+  const n = Number(raw);
+  return Number.isFinite(n) && n > 0 ? n : 20;
+}
+
 function makeEdit() {
   const chaos = Math.min(11, Math.max(1, Number(chaosEl.value) || 7));
   const seed = crypto.getRandomValues(new Uint32Array(1))[0] >>> 0;
-  const edit = generateEDL({ duration: engine.duration, chaos, seed, toggles: readToggles() });
+  const edit = generateEDL({
+    duration: engine.duration, chaos, seed, toggles: readToggles(), maxOut: readMaxOut(),
+  });
   state.currentEdit = edit;
   conductor.captionLang = captionLang();
   conductor.load(edit);
-  seedLabel.textContent = `seed: ${edit.seed}`;
+  seedLabel.textContent = t('seed', { seed: edit.seed });
   progressEl.value = 0;
   return edit;
 }
@@ -355,11 +370,11 @@ function makeEdit() {
 async function poopIt() {
   if (state.exporting) return;
   if (state.susRecording) {
-    toast('🔴 a sus performance is still recording — stop it first.');
+    toast(t('toast.susRecordingBusy'));
     return;
   }
   if (engine.duration === 0) {
-    toast('load something with sound first 💀');
+    toast(t('toast.loadSoundFirst'));
     return;
   }
   try { conductor.stop(); } catch (err) { console.warn(err); }
@@ -367,14 +382,14 @@ async function poopIt() {
     makeEdit();
   } catch (err) {
     console.warn('generateEDL failed', err);
-    toast('💥 the generator jammed. try again.');
+    toast(t('toast.generatorJam'));
     return;
   }
   try {
     await conductor.play();
   } catch (err) {
     console.warn('play failed', err);
-    toast('🔇 audio could not start. click once and try again.');
+    toast(t('toast.audioNoStart'));
   }
 }
 
@@ -384,18 +399,18 @@ function setExportUI(on) {
   exportBtn.disabled = on;
   ejectBtn.disabled = on;
   tabSusBtn.disabled = on;
-  exportBtn.textContent = on ? '🔴 RECORDING… (watch it cook)' : '📼 RECORD & DOWNLOAD';
+  exportBtn.textContent = t(on ? 'btn.exportBusy' : 'btn.export');
   // #stop-btn stays enabled: it ends playback, which finishes the recording early.
 }
 
 async function exportEdit() {
   if (state.exporting) return;
   if (state.susRecording) {
-    toast('🔴 a sus performance is still recording — stop it first.');
+    toast(t('toast.susRecordingBusy'));
     return;
   }
   if (!state.currentEdit) {
-    toast('poop first.');
+    toast(t('toast.poopFirst'));
     return;
   }
   try { conductor.stop(); } catch (err) { console.warn(err); }
@@ -410,10 +425,10 @@ async function exportEdit() {
     const blob = await exporter.stop();
     if (!blob.size) throw new Error('Recorder produced an empty file');
     downloadBlob(blob, `ytp-${state.currentEdit.seed}.${blobExt(blob)}`);
-    toast(`💾 ${fmtMB(blob.size)} MB of pure damage (.${blobExt(blob)} — post it anywhere)`);
+    toast(t('toast.exportDone', { mb: fmtMB(blob.size), ext: blobExt(blob) }));
   } catch (err) {
     console.warn('export failed', err);
-    toast('💥 export imploded. try again.');
+    toast(t('toast.exportFail'));
     try {
       await exporter.stop();
     } catch (_) { /* recorder already dead */ }
@@ -445,11 +460,11 @@ async function startSusRecording() {
     }
     susStopBtn.disabled = false;
     try { sus.setRecording(true); } catch (err) { console.warn(err); }
-    toast('🔴 recording the performance. go nuts.');
+    toast(t('toast.recStart'));
   } catch (err) {
     console.warn('sus recording failed to start', err);
     if (gen !== susRecordGen) return;
-    toast('💥 recorder said no.');
+    toast(t('toast.recNo'));
     state.susRecording = false; // roll back the claim
     susRecordBtn.disabled = false;
     susStopBtn.disabled = true;
@@ -466,10 +481,10 @@ async function stopSusRecording() {
     const blob = await exporter.stop();
     if (!blob.size) throw new Error('Recorder produced an empty file');
     downloadBlob(blob, `sus-performance.${blobExt(blob)}`);
-    toast(`💾 ${fmtMB(blob.size)} MB of certified sus`);
+    toast(t('toast.susSaved', { mb: fmtMB(blob.size) }));
   } catch (err) {
     console.warn('sus recording failed to stop', err);
-    toast('💥 could not save the recording.');
+    toast(t('toast.susSaveFail'));
   } finally {
     if (gen === susRecordGen) {
       state.susRecording = false;
@@ -512,7 +527,7 @@ requestAnimationFrame(idleFrame);
 
 function updateChaosLabel() {
   const v = Number(chaosEl.value);
-  chaosLabel.textContent = v === 11 ? '11 (WHY.)' : String(v);
+  chaosLabel.textContent = v === 11 ? t('chaos.max') : String(v);
   document.body.classList.toggle('maxchaos', v === 11);
 }
 
@@ -536,7 +551,7 @@ conductor.addEventListener('progress', (e) => {
 tabPoopBtn.addEventListener('click', showPoopTab);
 tabSusBtn.addEventListener('click', () => {
   if (state.mediaKind === 'image' && engine.duration === 0) {
-    toast('🚫 sus machine needs audio and this image somehow has none.');
+    toast(t('toast.susNeedsAudio'));
     return;
   }
   showSusTab();
@@ -545,7 +560,7 @@ tabSusBtn.addEventListener('click', () => {
 ejectBtn.addEventListener('click', () => {
   if (state.exporting) return;
   if (state.susRecording) {
-    toast('🔴 stop the sus recording first.');
+    toast(t('toast.stopSusFirst'));
     return;
   }
   teardown();
@@ -554,7 +569,7 @@ ejectBtn.addEventListener('click', () => {
   showPoopTab();
   appEl.hidden = true;
   dropzoneEl.hidden = false;
-  toast('⏏ ejected. feed me something new.');
+  toast(t('toast.ejected'));
 });
 
 susRecordBtn.addEventListener('click', startSusRecording);
@@ -612,6 +627,51 @@ document.addEventListener('drop', (e) => {
 document.addEventListener('pointerdown', () => {
   engine.ensureRunning();
 }, { once: true, capture: true });
+
+// ---------- length / lite / language ----------
+
+lengthEl?.addEventListener('change', () => {
+  if (lengthEl.value !== 'full') return;
+  const secs = Math.round(engine.duration);
+  if (secs > 60) toast(t('toast.longRisk', { seconds: secs }), 5000);
+});
+
+liteEl?.addEventListener('change', () => {
+  // Never resize the canvas mid-capture: captureStream's track size is fixed
+  // when recording starts.
+  if (state.exporting || state.susRecording) {
+    liteEl.checked = !liteEl.checked;
+    toast(t('toast.recordingBusy'));
+    return;
+  }
+  if (state.mediaKind) applyStageSize();
+});
+
+// Phones and low-core machines start in lite mode; it's the difference between
+// smooth playback and a slideshow, and it can always be switched off.
+if (liteEl && (window.innerWidth <= 700 || (navigator.hardwareConcurrency || 8) <= 4)) {
+  liteEl.checked = true;
+}
+
+function syncLangUI() {
+  const lang = getLang();
+  document.documentElement.lang = lang;
+  if (langBtn) langBtn.textContent = lang === 'ru' ? 'EN' : 'РУ';
+  applyTo(document);
+  // Labels that JS owns rather than the DOM have to be re-rendered by hand.
+  updateChaosLabel();
+  setExportUI(state.exporting);
+  try { sus.syncLabels(); } catch (err) { console.warn(err); }
+  if (state.currentEdit) seedLabel.textContent = t('seed', { seed: state.currentEdit.seed });
+}
+
+langBtn?.addEventListener('click', () => {
+  setLang(getLang() === 'ru' ? 'en' : 'ru');
+});
+
+onLangChange(syncLangUI);
+initLang();
+syncLangUI();
 
 // Console toy for power users (and debugging): poke the machine directly.
 window.YTP = { engine, vfx, conductor, sus, exporter, state };

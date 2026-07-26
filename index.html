@@ -11,11 +11,12 @@
 <body>
 
   <header>
+    <button id="lang-btn" class="btn lang-btn" title="Language / Язык">РУ</button>
     <h1>💩 YTP-O-MATIC 9000</h1>
     <div id="tagline">
       <div class="marquee">
-        <span>THE MIRACLE NOBODY ASKED FOR ★ 100% ARTIFICIAL STUPIDITY ★ NO REFUNDS ★ POOP RESPONSIBLY ★ AS SEEN ON THE INTERNET ★ ZERO STARS ON YELP ★&nbsp;</span>
-        <span aria-hidden="true">THE MIRACLE NOBODY ASKED FOR ★ 100% ARTIFICIAL STUPIDITY ★ NO REFUNDS ★ POOP RESPONSIBLY ★ AS SEEN ON THE INTERNET ★ ZERO STARS ON YELP ★&nbsp;</span>
+        <span data-i18n="tagline">THE MIRACLE NOBODY ASKED FOR ★ 100% ARTIFICIAL STUPIDITY ★ NO REFUNDS ★ POOP RESPONSIBLY ★ AS SEEN ON THE INTERNET ★ ZERO STARS ON YELP ★&nbsp;</span>
+        <span data-i18n="tagline" aria-hidden="true">THE MIRACLE NOBODY ASKED FOR ★ 100% ARTIFICIAL STUPIDITY ★ NO REFUNDS ★ POOP RESPONSIBLY ★ AS SEEN ON THE INTERNET ★ ZERO STARS ON YELP ★&nbsp;</span>
       </div>
     </div>
   </header>
@@ -26,9 +27,9 @@
     <section id="dropzone">
       <div class="drop-inner">
         <div class="drop-emoji" aria-hidden="true">📼</div>
-        <div class="drop-title">DROP A VIDEO / AUDIO / IMAGE HERE</div>
+        <div class="drop-title" data-i18n="drop.title">DROP A VIDEO / AUDIO / IMAGE HERE</div>
         <label class="btn file-btn">
-          …or click to browse
+          <span data-i18n="drop.browse">…or click to browse</span>
           <input type="file" id="file-input" accept="video/*,audio/*,image/*">
         </label>
       </div>
@@ -38,30 +39,40 @@
     <section id="app" hidden>
 
       <nav class="tabs" aria-label="machine tabs">
-        <button id="tab-poop" class="tab active" aria-selected="true">💩 POOP MACHINE</button>
-        <button id="tab-sus" class="tab" aria-selected="false">📼 SUS MACHINE</button>
-        <button id="eject-btn" class="btn">⏏ EJECT</button>
+        <button id="tab-poop" class="tab active" aria-selected="true" data-i18n="tab.poop">💩 POOP MACHINE</button>
+        <button id="tab-sus" class="tab" aria-selected="false" data-i18n="tab.sus">📼 SUS MACHINE</button>
+        <button id="eject-btn" class="btn" data-i18n="btn.eject">⏏ EJECT</button>
       </nav>
 
       <div id="stage-wrap"><canvas id="stage" width="1280" height="720"></canvas></div>
 
       <div id="poop-panel" class="panel">
         <div class="chaos-row">
-          <label for="chaos" class="chaos-title">CHAOS</label>
+          <label for="chaos" class="chaos-title" data-i18n="label.chaos">CHAOS</label>
           <input type="range" id="chaos" min="1" max="11" value="7">
           <span id="chaos-label">7</span>
         </div>
 
         <div class="chips">
-          <label class="chip"><input type="checkbox" id="tgl-stutter" checked> ✂️ stutter</label>
-          <label class="chip"><input type="checkbox" id="tgl-reverse" checked> ⏪ reverse</label>
-          <label class="chip"><input type="checkbox" id="tgl-speed" checked> 🐇 speed</label>
-          <label class="chip"><input type="checkbox" id="tgl-pitch" checked> 🎹 pitch</label>
-          <label class="chip"><input type="checkbox" id="tgl-earrape"> 🔊 earrape (⚠ actually loud)</label>
-          <label class="chip"><input type="checkbox" id="tgl-jumpcuts" checked> ✈️ jumpcuts</label>
-          <label class="chip"><input type="checkbox" id="tgl-visuals" checked> 🌈 visuals</label>
-          <label class="chip"><input type="checkbox" id="tgl-captions" checked> 💬 captions</label>
-          <label class="chip chip-select">🗣 captions in
+          <label class="chip chip-select"><span data-i18n="label.length">LENGTH</span>
+            <select id="length">
+              <option value="5">5s</option>
+              <option value="10">10s</option>
+              <option value="20" selected>20s</option>
+              <option value="45">45s</option>
+              <option value="full" data-i18n="length.full">FULL ⚠</option>
+            </select>
+          </label>
+          <label class="chip"><input type="checkbox" id="tgl-stutter" checked> <span data-i18n="tgl.stutter">✂️ stutter</span></label>
+          <label class="chip"><input type="checkbox" id="tgl-reverse" checked> <span data-i18n="tgl.reverse">⏪ reverse</span></label>
+          <label class="chip"><input type="checkbox" id="tgl-speed" checked> <span data-i18n="tgl.speed">🐇 speed</span></label>
+          <label class="chip"><input type="checkbox" id="tgl-pitch" checked> <span data-i18n="tgl.pitch">🎹 pitch</span></label>
+          <label class="chip"><input type="checkbox" id="tgl-earrape"> <span data-i18n="tgl.earrape">🔊 earrape (⚠ actually loud)</span></label>
+          <label class="chip"><input type="checkbox" id="tgl-jumpcuts" checked> <span data-i18n="tgl.jumpcuts">✈️ jumpcuts</span></label>
+          <label class="chip"><input type="checkbox" id="tgl-visuals" checked> <span data-i18n="tgl.visuals">🌈 visuals</span></label>
+          <label class="chip"><input type="checkbox" id="tgl-captions" checked> <span data-i18n="tgl.captions">💬 captions</span></label>
+          <label class="chip"><input type="checkbox" id="tgl-lite"> <span data-i18n="tgl.lite">⚡ lite (easier on phones)</span></label>
+          <label class="chip chip-select"><span data-i18n="label.captionLang">🗣 captions in</span>
             <select id="caption-lang">
               <option value="en" selected>EN</option>
               <option value="ru">РУ</option>
@@ -71,10 +82,10 @@
         </div>
 
         <div class="btn-row">
-          <button id="poop-btn" class="btn">💩 POOP IT</button>
-          <button id="reroll-btn" class="btn">🎲 RE-POOP</button>
-          <button id="stop-btn" class="btn">🛑 STOP</button>
-          <button id="export-btn" class="btn">📼 RECORD &amp; DOWNLOAD</button>
+          <button id="poop-btn" class="btn" data-i18n="btn.poop">💩 POOP IT</button>
+          <button id="reroll-btn" class="btn" data-i18n="btn.reroll">🎲 RE-POOP</button>
+          <button id="stop-btn" class="btn" data-i18n="btn.stop">🛑 STOP</button>
+          <button id="export-btn" class="btn" data-i18n="btn.export">📼 RECORD &amp; DOWNLOAD</button>
         </div>
 
         <div id="seed-label"></div>
@@ -82,14 +93,14 @@
       </div>
 
       <div id="sus-panel" class="panel" hidden>
-        <p class="sus-instructions">scrub the timeline with your mouse. stop moving = get stuck. press ▶ (or space) to just let it play — grab it mid-play to scratch. it's art.</p>
+        <p class="sus-instructions" data-i18n="sus.instructions">scrub the timeline with your mouse. stop moving = get stuck. press ▶ (or space) to just let it play — grab it mid-play to scratch. it's art.</p>
         <canvas id="timeline"></canvas>
         <div class="sus-controls">
           <button id="sus-play" class="btn">▶ PLAY</button>
-          <label class="chip"><input type="checkbox" id="sus-clean" checked> 🧼 clean scroll (no pitch warp)</label>
-          <label class="chip"><input type="checkbox" id="sus-latch"> 🔒 latch loop on release</label>
-          <button id="sus-record-btn" class="btn">🔴 RECORD PERFORMANCE</button>
-          <button id="sus-stop-btn" class="btn" disabled>⏹ STOP &amp; DOWNLOAD</button>
+          <label class="chip"><input type="checkbox" id="sus-clean" checked> <span data-i18n="sus.clean">🧼 clean scroll (no pitch warp)</span></label>
+          <label class="chip"><input type="checkbox" id="sus-latch"> <span data-i18n="sus.latch">🔒 latch loop on release</span></label>
+          <button id="sus-record-btn" class="btn" data-i18n="sus.record">🔴 RECORD PERFORMANCE</button>
+          <button id="sus-stop-btn" class="btn" disabled data-i18n="sus.stopDownload">⏹ STOP &amp; DOWNLOAD</button>
         </div>
       </div>
 
