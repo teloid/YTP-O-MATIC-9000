@@ -38,7 +38,7 @@ const susRecordBtn = $('sus-record-btn');
 const susStopBtn = $('sus-stop-btn');
 const lengthEl = $('length');
 const liteEl = $('tgl-lite');
-const langBtn = $('lang-btn');
+const langSwitch = $('lang-switch');
 
 const TOGGLE_KEYS = ['stutter', 'reverse', 'speed', 'pitch', 'earrape', 'jumpcuts', 'visuals', 'captions'];
 
@@ -656,7 +656,11 @@ if (liteEl && (window.innerWidth <= 700 || (navigator.hardwareConcurrency || 8) 
 function syncLangUI() {
   const lang = getLang();
   document.documentElement.lang = lang;
-  if (langBtn) langBtn.textContent = lang === 'ru' ? 'EN' : 'РУ';
+  for (const opt of langSwitch?.querySelectorAll('.lang-opt') || []) {
+    const on = opt.dataset.lang === lang;
+    opt.classList.toggle('active', on);
+    opt.setAttribute('aria-pressed', String(on));
+  }
   applyTo(document);
   // Labels that JS owns rather than the DOM have to be re-rendered by hand.
   updateChaosLabel();
@@ -665,8 +669,9 @@ function syncLangUI() {
   if (state.currentEdit) seedLabel.textContent = t('seed', { seed: state.currentEdit.seed });
 }
 
-langBtn?.addEventListener('click', () => {
-  setLang(getLang() === 'ru' ? 'en' : 'ru');
+langSwitch?.addEventListener('click', (e) => {
+  const opt = e.target.closest?.('.lang-opt');
+  if (opt?.dataset.lang) setLang(opt.dataset.lang);
 });
 
 onLangChange(syncLangUI);

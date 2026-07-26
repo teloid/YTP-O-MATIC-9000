@@ -63,8 +63,8 @@ chaos, pitch demons, earrape (off by default, it's *actually loud*), jump
 cuts, visual glitches, Impact captions — and hit **POOP IT**. Every edit is
 seeded: the seed is shown, and **RE-POOP** rolls a new one.
 
-Captions come in **EN / РУ / BOTH** (🗣 selector): the Russian pool ships
-classics like «ЭТО ФИАСКО, БРАТАН» and «МАМ, Я В ТЕЛЕВИЗОРЕ», and in РУ mode
+Captions come in **EN / RU / BOTH** (🗣 selector): the Russian pool ships
+classics like «ЭТО ФИАСКО, БРАТАН» and «МАМ, Я В ТЕЛЕВИЗОРЕ», and in RU mode
 the final flash bang says «ПОКАКАНО.»
 
 **📼 RECORD & DOWNLOAD** replays the current edit while capturing the canvas
@@ -95,7 +95,7 @@ Load anything with audio and switch tabs. You get a rainbow waveform timeline:
 
 ## Языки / Languages
 
-The whole interface speaks English and Russian — hit the **РУ / EN** button in
+The whole interface speaks English and Russian — hit the **EN / RU** switch in
 the header. It remembers your choice and starts in Russian if that's your
 browser's language. (Captions inside the video are a separate setting, so you
 can have an English UI pooping Russian captions.)

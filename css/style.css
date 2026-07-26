@@ -726,31 +726,50 @@ body.maxchaos #chaos-label {
 }
 
 /* ============ language toggle ============ */
-/* the absolute lang button must not sit on top of the title */
-header {
-  position: relative;
-  padding-right: 4rem;
+/* ============ language switch ============ */
+.header-top {
+  display: flex;
+  justify-content: flex-end;
+  padding: 0.5rem 0.8rem 0;
 }
 
-.lang-btn {
-  position: absolute;
-  top: 0.6rem;
-  right: 0.8rem;
-  z-index: 3;
-  padding: 0.35em 0.7em;
-  font-size: 0.95rem;
-  background: var(--cyan, #0ff);
+.lang-switch {
+  display: inline-flex;
+  border: 3px solid #000;
+  border-radius: 999px;
+  overflow: hidden;
+  background: var(--ink);
+  box-shadow: var(--shadow-hard);
+}
+
+.lang-opt {
+  min-width: 44px;
+  padding: 0.3em 0.7em;
+  border: 0;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.6);
+  font-family: var(--font-loud);
+  font-size: 0.85rem;
+  letter-spacing: 0.06em;
+  cursor: pointer;
+}
+
+.lang-opt + .lang-opt { border-left: 3px solid #000; }
+
+.lang-opt:hover { color: #fff; }
+
+.lang-opt.active {
+  background: var(--grad-hot);
   color: #000;
 }
 
-@media (max-width: 700px) {
-  header { padding-right: 3.2rem; }
-
-  .lang-btn {
-    top: 0.35rem;
-    right: 0.5rem;
-    min-height: 38px;
-    padding: 0.3em 0.6em;
-    font-size: 0.85rem;
-  }
+.lang-opt:focus-visible {
+  outline: 3px dashed var(--cyan);
+  outline-offset: -3px;
 }
+
+@media (max-width: 700px) {
+  .header-top { padding: 0.4rem 0.5rem 0; }
+  .lang-opt { min-height: 34px; font-size: 0.8rem; }
+}
+

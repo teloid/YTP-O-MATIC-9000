@@ -11,7 +11,12 @@
 <body>
 
   <header>
-    <button id="lang-btn" class="btn lang-btn" title="Language / Язык">РУ</button>
+    <div class="header-top">
+      <div id="lang-switch" class="lang-switch" role="group" aria-label="Language / Язык">
+        <button type="button" class="lang-opt" data-lang="en">EN</button>
+        <button type="button" class="lang-opt" data-lang="ru">RU</button>
+      </div>
+    </div>
     <h1>💩 YTP-O-MATIC 9000</h1>
     <div id="tagline">
       <div class="marquee">
@@ -75,7 +80,7 @@
           <label class="chip chip-select"><span data-i18n="label.captionLang">🗣 captions in</span>
             <select id="caption-lang">
               <option value="en" selected>EN</option>
-              <option value="ru">РУ</option>
+              <option value="ru">RU</option>
               <option value="both">BOTH 🤝</option>
             </select>
           </label>
