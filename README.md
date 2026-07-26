@@ -90,6 +90,10 @@ Load anything with audio and switch tabs. You get a rainbow waveform timeline:
   source's original pitch/speed. Scrubbing sounds like honest audio and the
   stuck loop becomes a perfect skipping-CD. Often funnier.
 - **mouse wheel** — pitch-bend the whole instrument ±1 octave.
+- **← / →** — scratch from the keyboard: each press steps the playhead *and*
+  plays that slice (leftwards plays reversed), so holding a key rides the key
+  repeat into a continuous scratch. Hold **shift** for 1-second jumps. Works
+  while it's playing too — it keeps rolling from the new spot.
 - **🔒 latch** — release the mouse and let the loop run forever. It's art.
 - **🔴 RECORD PERFORMANCE** — capture your scrubbing session as a video file.
 

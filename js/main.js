@@ -579,14 +579,28 @@ $('sus-play')?.addEventListener('click', () => {
   try { sus.togglePlay(); } catch (err) { console.warn(err); }
 });
 
-// Spacebar = play/pause on the sus machine (but never hijack typing/buttons).
+// Sus-machine keys: space = play/pause, ←/→ = scratch (Shift = coarse jump).
+// Never hijack typing or a focused control.
+const NUDGE_FINE_SEC = 0.1;
+const NUDGE_COARSE_SEC = 1;
+
 document.addEventListener('keydown', (e) => {
-  if (e.code !== 'Space' || !state.susActive) return;
+  if (!state.susActive) return;
+  if (e.code !== 'Space' && e.code !== 'ArrowLeft' && e.code !== 'ArrowRight') return;
   const t = e.target;
   if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.tagName === 'SELECT'
     || t.tagName === 'BUTTON' || t.isContentEditable)) return;
   e.preventDefault();
-  try { sus.togglePlay(); } catch (err) { console.warn(err); }
+  try {
+    if (e.code === 'Space') {
+      sus.togglePlay();
+      return;
+    }
+    const step = e.shiftKey ? NUDGE_COARSE_SEC : NUDGE_FINE_SEC;
+    sus.nudge(e.code === 'ArrowLeft' ? -step : step);
+  } catch (err) {
+    console.warn(err);
+  }
 });
 
 fileInput.addEventListener('change', () => {

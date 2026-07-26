@@ -135,6 +135,34 @@ export class SusMachine {
     this._startTransport(this._pos);
   }
 
+  // Arrow-key scratching: step the playhead and SPRAY A GRAIN so you hear the
+  // move, the way a mouse drag does — a silent seek would just feel broken.
+  // Holding the key rides the browser's auto-repeat into a continuous scratch.
+  nudge(deltaSec) {
+    if (!this._active) return false;
+    if (this._engaged) return false; // the mouse owns the playhead mid-drag
+    const dur = this._duration();
+    const delta = Number(deltaSec);
+    if (dur <= 0 || !Number.isFinite(delta) || delta === 0) return false;
+
+    this._clearStuck(true);
+    this._dir = delta < 0 ? -1 : 1;
+    const next = clamp(this._pos + delta, 0, Math.max(0, dur - 0.01));
+    const moved = Math.abs(next - this._pos) > 1e-6;
+    this._pos = next;
+
+    if (this._transport || this._transportStarting) {
+      // Rolling: keep rolling, just from the new spot.
+      this._stopTransport();
+      this._pos = next;
+      this._startTransport(next);
+    } else {
+      this._maybeGrain(performance.now()); // throttled, so auto-repeat is safe
+      this._seekVideo(performance.now(), true);
+    }
+    return moved;
+  }
+
   _transportPos(transport = this._transport) {
     const t = transport;
     if (!t) return this._pos;

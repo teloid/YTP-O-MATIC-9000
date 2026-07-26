@@ -533,4 +533,85 @@ for (const duration of [0.05, 0.2, 1, 60]) {
   assert.equal(scheduled.at(-1), 0, 'monitoring must return to zero latency after recording');
 }
 
+// Arrow-key scratching moves the playhead AND makes a sound (a silent seek
+// would feel broken), sets the grain direction, clamps at both ends, keeps a
+// rolling transport rolling from the new spot, and never fights the mouse.
+{
+  const grains = [];
+  let transportStarts = 0;
+  const engine = {
+    duration: 10,
+    ctx: { state: 'running', currentTime: 100 },
+    playGrain: (opts) => { grains.push(opts); return {}; },
+    playSegment: () => ({ stop() {} }),
+    ensureRunning: async () => true,
+    startStuckLoop() {}, updateStuckLoop() {}, stopStuckLoop() {}, stopAll() {},
+  };
+  const mk = () => {
+    const sus = new SusMachine({
+      engine, vfx: { draw() {} }, timelineCanvas: null,
+      videoEl: null, imageEl: null, mediaKindGetter: () => 'audio',
+    });
+    sus._active = true;
+    sus._drawTimeline = () => {};
+    return sus;
+  };
+
+  const sus = mk();
+  sus._pos = 5;
+  grains.length = 0;
+  assert.equal(sus.nudge(0.1), true);
+  assert.ok(Math.abs(sus._pos - 5.1) < 1e-9, `forward nudge: ${sus._pos}`);
+  assert.equal(sus._dir, 1);
+  assert.equal(grains.length, 1, 'a nudge must be audible');
+  assert.ok(Math.abs(grains[0].pos - 5.1) < 1e-9);
+  assert.equal(grains[0].reverse, false);
+
+  sus._lastGrainT = -1e9; // clear the 35ms grain throttle
+  assert.equal(sus.nudge(-0.1), true);
+  assert.ok(Math.abs(sus._pos - 5) < 1e-9, `back nudge: ${sus._pos}`);
+  assert.equal(sus._dir, -1);
+  assert.equal(grains.at(-1).reverse, true, 'a leftward nudge plays reversed');
+
+  // clamped at both ends, and a no-op move reports false
+  sus._pos = 0;
+  sus._lastGrainT = -1e9;
+  assert.equal(sus.nudge(-1), false, 'no movement at the start reports false');
+  assert.equal(sus._pos, 0);
+  sus._pos = 10;
+  sus._lastGrainT = -1e9;
+  sus.nudge(5);
+  assert.ok(sus._pos <= 10 && sus._pos >= 9.9, `clamped at the end: ${sus._pos}`);
+
+  // garbage in, nothing out
+  for (const bad of [undefined, null, NaN, Infinity, 'x', 0]) {
+    assert.equal(sus.nudge(bad), false, `nudge(${String(bad)}) must be a no-op`);
+  }
+
+  // while the transport rolls, a nudge relocates it instead of going silent
+  const rolling = mk();
+  rolling._pos = 2;
+  rolling._startTransport = (pos) => { transportStarts += 1; rolling._transport = { node: { stop() {} }, startPos: pos, startCtxT: 100, rate: 1 }; return true; };
+  rolling._transport = { node: { stop() {} }, startPos: 2, startCtxT: 100, rate: 1 };
+  transportStarts = 0;
+  rolling.nudge(0.5);
+  assert.equal(transportStarts, 1, 'a nudge must restart the transport');
+  assert.ok(rolling._transport, 'transport must survive a nudge');
+  assert.ok(Math.abs(rolling._transport.startPos - rolling._pos) < 1e-9);
+
+  // a mouse drag owns the playhead: arrows must not fight it
+  const dragging = mk();
+  dragging._pos = 3;
+  dragging._engaged = true;
+  assert.equal(dragging.nudge(0.5), false, 'arrows are ignored mid-drag');
+  assert.equal(dragging._pos, 3);
+
+  // inactive machine ignores keys entirely
+  const off = mk();
+  off._active = false;
+  off._pos = 1;
+  assert.equal(off.nudge(0.5), false);
+  assert.equal(off._pos, 1);
+}
+
 console.log('regression checks passed');

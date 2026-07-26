@@ -42,7 +42,7 @@ export const EN = {
   'seed': 'seed: {seed}',
 
   // sus panel
-  'sus.instructions': "scrub the timeline with your mouse. stop moving = get stuck. press ▶ (or space) to just let it play — grab it mid-play to scratch. it's art.",
+  'sus.instructions': "scrub the timeline with your mouse. stop moving = get stuck. press ▶ (or space) to just let it play — grab it mid-play to scratch. ← → scratch by keyboard (hold shift for big jumps). it's art.",
   'sus.play': '▶ PLAY',
   'sus.pause': '⏸ PAUSE',
   'sus.syncing': '⏳ SYNCING…',
@@ -113,7 +113,7 @@ export const RU = {
   'seed': 'сид: {seed}',
 
   // sus panel
-  'sus.instructions': 'води мышкой по таймлайну. замер = залип. жми ▶ (или пробел), чтобы просто играло — хватай на ходу и скретчи. это искусство.',
+  'sus.instructions': 'води мышкой по таймлайну. замер = залип. жми ▶ (или пробел), чтобы просто играло — хватай на ходу и скретчи. ← → скретчат с клавиатуры (с shift — большими прыжками). это искусство.',
   'sus.play': '▶ ПУСК',
   'sus.pause': '⏸ ПАУЗА',
   'sus.syncing': '⏳ СИНХРОН…',
